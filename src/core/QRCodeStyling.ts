@@ -7,9 +7,11 @@ import drawTypes from "../constants/drawTypes";
 import defaultOptions, { RequiredOptions } from "./QROptions";
 import sanitizeOptions from "../tools/sanitizeOptions";
 import { FileExtension, QRCode, Options, DownloadOptions, ExtensionFunction, Window } from "../types";
+import { ImageLoader } from "../types/svg-descriptors";
 import qrcode from "qrcode-generator";
 import getMimeType from "../tools/getMimeType";
-import { Canvas as NodeCanvas, Image } from "canvas";
+import { renderToDOM } from "../renderers/web/domRenderer";
+import { createWebImageLoader, createNodeImageLoader } from "../renderers/web/webImageLoader";
 
 declare const window: Window;
 
@@ -18,12 +20,13 @@ export default class QRCodeStyling {
   _window: Window;
   _container?: HTMLElement;
   _domCanvas?: HTMLCanvasElement;
-  _nodeCanvas?: NodeCanvas;
+  _nodeCanvas?: unknown;
   _svg?: SVGElement;
   _qr?: QRCode;
   _extension?: ExtensionFunction;
   _canvasDrawingPromise?: Promise<void>;
   _svgDrawingPromise?: Promise<void>;
+  _imageLoader?: ImageLoader;
 
   constructor(options?: Partial<Options>) {
     if (options?.jsdom) {
@@ -32,6 +35,21 @@ export default class QRCodeStyling {
       this._window = window;
     }
     this._options = options ? sanitizeOptions(mergeDeep(defaultOptions, options) as RequiredOptions) : defaultOptions;
+
+    // Set up the appropriate image loader
+    if (this._options.nodeCanvas?.loadImage) {
+      this._imageLoader = createNodeImageLoader(
+        this._options.nodeCanvas as Parameters<typeof createNodeImageLoader>[0],
+        this._options.imageOptions.saveAsBlob
+      );
+    } else {
+      this._imageLoader = createWebImageLoader(
+        this._window,
+        this._options.imageOptions.crossOrigin,
+        this._options.imageOptions.saveAsBlob
+      );
+    }
+
     this.update();
   }
 
@@ -45,12 +63,25 @@ export default class QRCodeStyling {
     if (!this._qr) {
       return;
     }
-    const qrSVG = new QRSVG(this._options, this._window);
+    const qrSVG = new QRSVG(this._options);
 
-    this._svg = qrSVG.getElement();
-    this._svgDrawingPromise = qrSVG.drawQR(this._qr).then(() => {
+    // Create SVG root element immediately (same timing as original)
+    // so that append() and _getElement() guards work correctly.
+    const rootDesc = qrSVG.getDescriptor();
+    const svg = this._window.document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGElement;
+    for (const [key, value] of Object.entries(rootDesc.attributes)) {
+      svg.setAttribute(key, value);
+    }
+    this._svg = svg;
+
+    this._svgDrawingPromise = qrSVG.drawQR(this._qr, this._imageLoader).then(() => {
       if (!this._svg) return;
-      this._extension?.(qrSVG.getElement(), this._options);
+      // Populate SVG with drawn content (children added during drawQR)
+      const descriptor = qrSVG.getDescriptor();
+      for (const child of descriptor.children) {
+        this._svg.appendChild(renderToDOM(child, this._window.document));
+      }
+      this._extension?.(this._svg, this._options);
     });
   }
 
@@ -61,8 +92,8 @@ export default class QRCodeStyling {
 
     if (this._options.nodeCanvas?.createCanvas) {
       this._nodeCanvas = this._options.nodeCanvas.createCanvas(this._options.width, this._options.height);
-      this._nodeCanvas.width = this._options.width;
-      this._nodeCanvas.height = this._options.height;
+      (this._nodeCanvas as HTMLCanvasElement).width = this._options.width;
+      (this._nodeCanvas as HTMLCanvasElement).height = this._options.height;
     } else {
       this._domCanvas = document.createElement("canvas");
       this._domCanvas.width = this._options.width;
@@ -76,14 +107,14 @@ export default class QRCodeStyling {
       const svg = this._svg;
       const xml = new this._window.XMLSerializer().serializeToString(svg);
       const svg64 = btoa(xml);
-      const image64 = `data:${getMimeType('svg')};base64,${svg64}`;
+      const image64 = `data:${getMimeType("svg")};base64,${svg64}`;
 
       if (this._options.nodeCanvas?.loadImage) {
-        return this._options.nodeCanvas.loadImage(image64).then((image: Image) => {
+        return this._options.nodeCanvas.loadImage(image64).then((image: { width: number; height: number }) => {
           // fix blurry svg
           image.width = this._options.width;
           image.height = this._options.height;
-          this._nodeCanvas?.getContext("2d")?.drawImage(image, 0, 0);
+          (this._nodeCanvas as HTMLCanvasElement)?.getContext("2d")?.drawImage(image as CanvasImageSource, 0, 0);
         });
       } else {
         const image = new this._window.Image();
@@ -196,19 +227,20 @@ export default class QRCodeStyling {
     } else {
       return new Promise((resolve) => {
         const canvas = element;
-        if ('toBuffer' in canvas) {
+        if ("toBuffer" in (canvas as object)) {
           // Different call is needed to prevent error TS2769: No overload matches this call.
           if (mimeType === "image/png") {
-            resolve(canvas.toBuffer(mimeType));
+            (canvas as { toBuffer: (mime: string) => Buffer }).toBuffer(mimeType);
+            resolve((canvas as { toBuffer: (mime: string) => Buffer }).toBuffer(mimeType));
           } else if (mimeType === "image/jpeg") {
-            resolve(canvas.toBuffer(mimeType));
+            resolve((canvas as { toBuffer: (mime: string) => Buffer }).toBuffer(mimeType));
           } else if (mimeType === "application/pdf") {
-            resolve(canvas.toBuffer(mimeType));
+            resolve((canvas as { toBuffer: (mime: string) => Buffer }).toBuffer(mimeType));
           } else {
             throw Error("Unsupported extension");
           }
-        } else if ('toBlob' in canvas) {
-          (canvas).toBlob(resolve, mimeType, 1);
+        } else if ("toBlob" in (canvas as object)) {
+          (canvas as HTMLCanvasElement).toBlob(resolve, mimeType, 1);
         }
       });
     }

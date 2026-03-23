@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noUnusedLocals": false,
+    "noImplicitReturns": false,
+    "declaration": false,
+    "outDir": "./lib/react-native"
+  },
+  "include": [
+    "./src/renderers/react-native/**/*",
+    "./src/index.native.ts",
+    "./src/core/QRSVG.ts",
+    "./src/core/QROptions.ts",
+    "./src/types/**/*",
+    "./src/constants/**/*",
+    "./src/tools/calculateImageSize.ts",
+    "./src/tools/getMode.ts",
+    "./src/tools/merge.ts",
+    "./src/tools/sanitizeOptions.ts",
+    "./src/tools/getMimeType.ts",
+    "./src/figures/**/*"
+  ],
+  "exclude": []
+}

@@ -1,6 +1,3 @@
-import { DOMWindow, JSDOM } from "jsdom";
-import nodeCanvas  from "canvas";
-
 export interface UnknownObject {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
@@ -14,7 +11,8 @@ export type GradientType = "radial" | "linear";
 export type DrawType = "canvas" | "svg";
 export type ShapeType = "square" | "circle";
 
-export type Window = DOMWindow;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Window = any;
 
 export type Gradient = {
   type: GradientType;
@@ -115,9 +113,11 @@ export type Options = {
   height?: number;
   margin?: number;
   data?: string;
-  image?: string;
-  nodeCanvas?: typeof nodeCanvas;
-  jsdom?: typeof JSDOM;
+  image?: string | number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nodeCanvas?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  jsdom?: any;
   qrOptions?: {
     typeNumber?: TypeNumber;
     mode?: Mode;

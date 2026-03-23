@@ -1,18 +1,15 @@
 import cornerSquareTypes from "../../constants/cornerSquareTypes";
-import { CornerSquareType, DrawArgs, BasicFigureDrawArgs, RotateFigureArgs, Window } from "../../types";
+import { CornerSquareType, DrawArgs, BasicFigureDrawArgs, RotateFigureArgs } from "../../types";
+import { SvgElementDescriptor } from "../../types/svg-descriptors";
 
 export const availableCornerSquareTypes = Object.values(cornerSquareTypes);
 
 export default class QRCornerSquare {
-  _element?: SVGElement;
-  _svg: SVGElement;
+  _descriptor?: SvgElementDescriptor;
   _type: CornerSquareType;
-  _window: Window;
 
-  constructor({ svg, type, window }: { svg: SVGElement; type: CornerSquareType; window: Window }) {
-    this._svg = svg;
+  constructor({ type }: { type: CornerSquareType }) {
     this._type = type;
-    this._window = window;
   }
 
   draw(x: number, y: number, size: number, rotation: number): void {
@@ -39,7 +36,9 @@ export default class QRCornerSquare {
     const cy = y + size / 2;
 
     draw();
-    this._element?.setAttribute("transform", `rotate(${(180 * rotation) / Math.PI},${cx},${cy})`);
+    if (this._descriptor) {
+      this._descriptor.attributes["transform"] = `rotate(${(180 * rotation) / Math.PI},${cx},${cy})`;
+    }
   }
 
   _basicDot(args: BasicFigureDrawArgs): void {
@@ -49,17 +48,20 @@ export default class QRCornerSquare {
     this._rotateFigure({
       ...args,
       draw: () => {
-        this._element = this._window.document.createElementNS("http://www.w3.org/2000/svg", "path");
-        this._element.setAttribute("clip-rule", "evenodd");
-        this._element.setAttribute(
-          "d",
-          `M ${x + size / 2} ${y}` + // M cx, y //  Move to top of ring
-            `a ${size / 2} ${size / 2} 0 1 0 0.1 0` + // a outerRadius, outerRadius, 0, 1, 0, 1, 0 // Draw outer arc, but don't close it
-            `z` + // Z // Close the outer shape
-            `m 0 ${dotSize}` + // m -1 outerRadius-innerRadius // Move to top point of inner radius
-            `a ${size / 2 - dotSize} ${size / 2 - dotSize} 0 1 1 -0.1 0` + // a innerRadius, innerRadius, 0, 1, 1, -1, 0 // Draw inner arc, but don't close it
-            `Z` // Z // Close the inner ring. Actually will still work without, but inner ring will have one unit missing in stroke
-        );
+        this._descriptor = {
+          tag: "path",
+          attributes: {
+            "clip-rule": "evenodd",
+            d:
+              `M ${x + size / 2} ${y}` + // M cx, y //  Move to top of ring
+              `a ${size / 2} ${size / 2} 0 1 0 0.1 0` + // a outerRadius, outerRadius, 0, 1, 0, 1, 0 // Draw outer arc, but don't close it
+              `z` + // Z // Close the outer shape
+              `m 0 ${dotSize}` + // m -1 outerRadius-innerRadius // Move to top point of inner radius
+              `a ${size / 2 - dotSize} ${size / 2 - dotSize} 0 1 1 -0.1 0` + // a innerRadius, innerRadius, 0, 1, 1, -1, 0 // Draw inner arc, but don't close it
+              `Z` // Z // Close the inner ring. Actually will still work without, but inner ring will have one unit missing in stroke
+          },
+          children: []
+        };
       }
     });
   }
@@ -71,21 +73,24 @@ export default class QRCornerSquare {
     this._rotateFigure({
       ...args,
       draw: () => {
-        this._element = this._window.document.createElementNS("http://www.w3.org/2000/svg", "path");
-        this._element.setAttribute("clip-rule", "evenodd");
-        this._element.setAttribute(
-          "d",
-          `M ${x} ${y}` +
-            `v ${size}` +
-            `h ${size}` +
-            `v ${-size}` +
-            `z` +
-            `M ${x + dotSize} ${y + dotSize}` +
-            `h ${size - 2 * dotSize}` +
-            `v ${size - 2 * dotSize}` +
-            `h ${-size + 2 * dotSize}` +
-            `z`
-        );
+        this._descriptor = {
+          tag: "path",
+          attributes: {
+            "clip-rule": "evenodd",
+            d:
+              `M ${x} ${y}` +
+              `v ${size}` +
+              `h ${size}` +
+              `v ${-size}` +
+              `z` +
+              `M ${x + dotSize} ${y + dotSize}` +
+              `h ${size - 2 * dotSize}` +
+              `v ${size - 2 * dotSize}` +
+              `h ${-size + 2 * dotSize}` +
+              `z`
+          },
+          children: []
+        };
       }
     });
   }
@@ -97,29 +102,32 @@ export default class QRCornerSquare {
     this._rotateFigure({
       ...args,
       draw: () => {
-        this._element = this._window.document.createElementNS("http://www.w3.org/2000/svg", "path");
-        this._element.setAttribute("clip-rule", "evenodd");
-        this._element.setAttribute(
-          "d",
-          `M ${x} ${y + 2.5 * dotSize}` +
-            `v ${2 * dotSize}` +
-            `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${dotSize * 2.5} ${dotSize * 2.5}` +
-            `h ${2 * dotSize}` +
-            `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${dotSize * 2.5} ${-dotSize * 2.5}` +
-            `v ${-2 * dotSize}` +
-            `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${-dotSize * 2.5} ${-dotSize * 2.5}` +
-            `h ${-2 * dotSize}` +
-            `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${-dotSize * 2.5} ${dotSize * 2.5}` +
-            `M ${x + 2.5 * dotSize} ${y + dotSize}` +
-            `h ${2 * dotSize}` +
-            `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${dotSize * 1.5} ${dotSize * 1.5}` +
-            `v ${2 * dotSize}` +
-            `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${-dotSize * 1.5} ${dotSize * 1.5}` +
-            `h ${-2 * dotSize}` +
-            `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${-dotSize * 1.5} ${-dotSize * 1.5}` +
-            `v ${-2 * dotSize}` +
-            `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${dotSize * 1.5} ${-dotSize * 1.5}`
-        );
+        this._descriptor = {
+          tag: "path",
+          attributes: {
+            "clip-rule": "evenodd",
+            d:
+              `M ${x} ${y + 2.5 * dotSize}` +
+              `v ${2 * dotSize}` +
+              `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${dotSize * 2.5} ${dotSize * 2.5}` +
+              `h ${2 * dotSize}` +
+              `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${dotSize * 2.5} ${-dotSize * 2.5}` +
+              `v ${-2 * dotSize}` +
+              `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${-dotSize * 2.5} ${-dotSize * 2.5}` +
+              `h ${-2 * dotSize}` +
+              `a ${2.5 * dotSize} ${2.5 * dotSize}, 0, 0, 0, ${-dotSize * 2.5} ${dotSize * 2.5}` +
+              `M ${x + 2.5 * dotSize} ${y + dotSize}` +
+              `h ${2 * dotSize}` +
+              `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${dotSize * 1.5} ${dotSize * 1.5}` +
+              `v ${2 * dotSize}` +
+              `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${-dotSize * 1.5} ${dotSize * 1.5}` +
+              `h ${-2 * dotSize}` +
+              `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${-dotSize * 1.5} ${-dotSize * 1.5}` +
+              `v ${-2 * dotSize}` +
+              `a ${1.5 * dotSize} ${1.5 * dotSize}, 0, 0, 1, ${dotSize * 1.5} ${-dotSize * 1.5}`
+          },
+          children: []
+        };
       }
     });
   }

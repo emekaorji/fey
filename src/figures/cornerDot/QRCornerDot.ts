@@ -1,18 +1,15 @@
 import cornerDotTypes from "../../constants/cornerDotTypes";
-import { CornerDotType, RotateFigureArgs, BasicFigureDrawArgs, DrawArgs, Window } from "../../types";
+import { CornerDotType, RotateFigureArgs, BasicFigureDrawArgs, DrawArgs } from "../../types";
+import { SvgElementDescriptor } from "../../types/svg-descriptors";
 
 export const availableCornerDotTypes = Object.values(cornerDotTypes);
 
 export default class QRCornerDot {
-  _element?: SVGElement;
-  _svg: SVGElement;
+  _descriptor?: SvgElementDescriptor;
   _type: CornerDotType;
-  _window: Window;
 
-  constructor({ svg, type, window }: { svg: SVGElement; type: CornerDotType; window: Window }) {
-    this._svg = svg;
+  constructor({ type }: { type: CornerDotType }) {
     this._type = type;
-    this._window = window;
   }
 
   draw(x: number, y: number, size: number, rotation: number): void {
@@ -36,7 +33,9 @@ export default class QRCornerDot {
     const cy = y + size / 2;
 
     draw();
-    this._element?.setAttribute("transform", `rotate(${(180 * rotation) / Math.PI},${cx},${cy})`);
+    if (this._descriptor) {
+      this._descriptor.attributes["transform"] = `rotate(${(180 * rotation) / Math.PI},${cx},${cy})`;
+    }
   }
 
   _basicDot(args: BasicFigureDrawArgs): void {
@@ -45,10 +44,15 @@ export default class QRCornerDot {
     this._rotateFigure({
       ...args,
       draw: () => {
-        this._element = this._window.document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        this._element.setAttribute("cx", String(x + size / 2));
-        this._element.setAttribute("cy", String(y + size / 2));
-        this._element.setAttribute("r", String(size / 2));
+        this._descriptor = {
+          tag: "circle",
+          attributes: {
+            cx: String(x + size / 2),
+            cy: String(y + size / 2),
+            r: String(size / 2)
+          },
+          children: []
+        };
       }
     });
   }
@@ -59,11 +63,16 @@ export default class QRCornerDot {
     this._rotateFigure({
       ...args,
       draw: () => {
-        this._element = this._window.document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        this._element.setAttribute("x", String(x));
-        this._element.setAttribute("y", String(y));
-        this._element.setAttribute("width", String(size));
-        this._element.setAttribute("height", String(size));
+        this._descriptor = {
+          tag: "rect",
+          attributes: {
+            x: String(x),
+            y: String(y),
+            width: String(size),
+            height: String(size)
+          },
+          children: []
+        };
       }
     });
   }
